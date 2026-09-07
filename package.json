@@ -1,0 +1,41 @@
+{
+  "name": "windanvil-assurance-record",
+  "version": "0.1.0",
+  "description": "Portable, fail-closed assurance record primitives for immutable software evidence.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    },
+    "./schema": "./schema/assurance-record.schema.json"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "schema",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "pack:check": "npm pack --dry-run"
+  },
+  "keywords": [
+    "software-supply-chain",
+    "assurance",
+    "provenance",
+    "security",
+    "evidence",
+    "slsa",
+    "oscal"
+  ],
+  "homepage": "https://windanvil.com"
+}

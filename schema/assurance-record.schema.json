@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windanvil.com/schemas/assurance-record-v1.schema.json",
+  "title": "WindAnvil Assurance Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "generatedAt",
+    "authority",
+    "subject",
+    "policy",
+    "plan",
+    "receipt",
+    "verdict",
+    "evidence",
+    "oscal",
+    "digest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "windanvil.assurance-record" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record", "policy", "verdict", "externalInstrumentsAuthoritative"],
+      "properties": {
+        "record": { "const": "windanvil" },
+        "policy": { "const": "windanvil" },
+        "verdict": { "const": "windanvil" },
+        "externalInstrumentsAuthoritative": { "const": false }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind", "identity"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "identity": { "type": "object" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["digest"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "digest"],
+      "properties": {
+        "id": { "$ref": "#/$defs/digest" },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "reason"],
+      "properties": {
+        "value": { "enum": ["PASS", "FAIL", "BLOCKED"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observationDigests", "artifactDigests"],
+      "properties": {
+        "observationDigests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/digest" },
+          "uniqueItems": true
+        },
+        "artifactDigests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/digest" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "oscal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instrument", "role", "targetModel", "authoritative", "mode"],
+      "properties": {
+        "instrument": { "const": "compliance-trestle" },
+        "role": { "const": "oscal_validation_instrument" },
+        "targetModel": { "const": "assessment-results" },
+        "authoritative": { "const": false },
+        "mode": { "const": "validate_and_transform" }
+      }
+    },
+    "digest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

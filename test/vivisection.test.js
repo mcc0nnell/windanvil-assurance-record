@@ -10,6 +10,8 @@ import {
 const HEX_A = "a".repeat(64);
 const HEX_B = "b".repeat(64);
 const HEX_C = "c".repeat(64);
+const HEX_D = "d".repeat(64);
+const HEX_E = "e".repeat(64);
 
 function fixture(overrides = {}) {
   return {
@@ -42,9 +44,13 @@ function fixture(overrides = {}) {
     },
     experiment: {
       probeName: "state.snapshot",
+      probeVersion: "1.0.0",
       probeDescriptorSha256: HEX_B,
       inputSha256: HEX_C,
+      requestSha256: HEX_D,
+      authorizationIdSha256: HEX_E,
       outputSha256: HEX_A,
+      terminal: "COMPLETED",
       requestedEffects: ["observe.state"],
       exercisedEffects: ["observe.state"],
     },
@@ -88,6 +94,8 @@ test("Vivisection is a distinct self-digesting assurance record", () => {
   assert.equal(record.subject.bundleId, 7);
   assert.equal(record.judgment.authority, "VALID");
   assert.equal(record.authority.capabilityManifest.id, record.subject.manifestId);
+  assert.equal(record.experiment.requestSha256, HEX_D);
+  assert.equal(record.experiment.authorizationIdSha256, HEX_E);
   assert.equal(verifyAssuranceRecordDigest(record), true);
   assert.deepEqual(record.authority.vivisectionGrant.allowedEffects, ["observe.state"]);
   assert.deepEqual(
@@ -125,6 +133,26 @@ test("capability manifest authority must bind the exact subject manifest", () =>
   assert.throws(
     () => buildVivisectionAssuranceRecord(input),
     /capability manifest authority does not match the subject manifest/,
+  );
+});
+
+test("completed experiments must bind output identity", () => {
+  const input = fixture();
+  delete input.experiment.outputSha256;
+
+  assert.throws(
+    () => buildVivisectionAssuranceRecord(input),
+    /completed experiment must bind outputSha256/,
+  );
+});
+
+test("failed experiments cannot claim output identity", () => {
+  const input = fixture();
+  input.experiment.terminal = "FAILED";
+
+  assert.throws(
+    () => buildVivisectionAssuranceRecord(input),
+    /failed experiment must not claim outputSha256/,
   );
 });
 

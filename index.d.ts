@@ -68,6 +68,7 @@ export type VivisectionEffectsJudgment = "CONFORMANT" | "VIOLATION" | "NOT_APPLI
 export type VivisectionCausalityJudgment = "COMPLETE" | "PARTIAL" | "BROKEN" | "NOT_EVALUATED";
 export type VivisectionReconstructabilityJudgment = "YES" | "NO" | "BLOCKED";
 export type VivisectionReplayJudgment = "MATCH" | "DIVERGED" | "NOT_RUN" | "BLOCKED";
+export type VivisectionTerminalState = "COMPLETED" | "FAILED";
 
 export interface VivisectionAssuranceRecord {
   schemaVersion: 1;
@@ -101,9 +102,13 @@ export interface VivisectionAssuranceRecord {
   };
   experiment: {
     probeName: string;
+    probeVersion: string;
     probeDescriptorSha256: string;
     inputSha256: string;
+    requestSha256: string;
+    authorizationIdSha256: string;
     outputSha256?: string;
+    terminal: VivisectionTerminalState;
     requestedEffects: string[];
     exercisedEffects: string[];
   };

@@ -258,6 +258,12 @@ function requireSha256Hex(label, value) {
   }
 }
 
+function requirePositiveSafeInteger(label, value) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError(`${label} must be a positive safe integer`);
+  }
+}
+
 function normalizeStrings(label, values) {
   if (!Array.isArray(values)) throw new TypeError(`${label} must be an array`);
   const normalized = [...new Set(values)];
@@ -275,10 +281,10 @@ function requireVivisectionJudgment(label, value) {
  * Build a first-class Vivisection Assurance Record.
  *
  * This is intentionally a sibling of the production execution record rather
- * than debug metadata. It binds an experiment to exact signed authority,
- * artifact identity, probe/effect scope, evidence receipts, and an independent
- * WindAnvil judgment. The caller supplies the terminal verdict; this package
- * never upgrades experimental success into a production-correctness claim.
+ * than debug metadata. It binds an experiment to exact Blade authority,
+ * artifact identity, probe/effect scope, the one-shot receipt chain, and an
+ * independent WindAnvil judgment. The caller supplies the terminal verdict;
+ * this package never upgrades experimental success into production correctness.
  */
 export function buildVivisectionAssuranceRecord(input) {
   if (!input || typeof input !== "object") throw new TypeError("input must be an object");
@@ -294,9 +300,23 @@ export function buildVivisectionAssuranceRecord(input) {
   }
   requireSha256Hex("subject.bundleSha256", input.subject.bundleSha256);
 
-  requireNonEmptyString("authority.capabilityGrantId", input.authority?.capabilityGrantId);
-  requireNonEmptyString("authority.vivisectionGrantId", input.authority?.vivisectionGrantId);
-  const allowedEffects = normalizeStrings("authority.allowedEffects", input.authority?.allowedEffects ?? []);
+  requireNonEmptyString("authority.capabilityManifest.id", input.authority?.capabilityManifest?.id);
+  requireDigest("authority.capabilityManifest.digest", input.authority?.capabilityManifest?.digest);
+  if (input.authority.capabilityManifest.id !== input.subject.manifestId) {
+    throw new TypeError("capability manifest authority does not match the subject manifest");
+  }
+
+  const grant = input.authority?.vivisectionGrant;
+  requireNonEmptyString("authority.vivisectionGrant.id", grant?.id);
+  requireDigest("authority.vivisectionGrant.digest", grant?.digest);
+  requireNonEmptyString("authority.vivisectionGrant.bladeId", grant?.bladeId);
+  requireNonEmptyString("authority.vivisectionGrant.keyId", grant?.keyId);
+  requirePositiveSafeInteger("authority.vivisectionGrant.authorizationEpoch", grant?.authorizationEpoch);
+  requirePositiveSafeInteger("authority.vivisectionGrant.notAfterUnix", grant?.notAfterUnix);
+  const allowedEffects = normalizeStrings(
+    "authority.vivisectionGrant.allowedEffects",
+    grant?.allowedEffects ?? [],
+  );
 
   requireNonEmptyString("experiment.probeName", input.experiment?.probeName);
   requireSha256Hex("experiment.probeDescriptorSha256", input.experiment?.probeDescriptorSha256);
@@ -324,10 +344,20 @@ export function buildVivisectionAssuranceRecord(input) {
     }
   }
 
-  requireDigest("receipts.opened", input.receipts?.opened);
-  requireDigest("receipts.authorized", input.receipts?.authorized);
-  requireDigest("receipts.terminal", input.receipts?.terminal);
-  requireDigest("receipts.closed", input.receipts?.closed);
+  const receiptNames = [
+    "opened",
+    "grantVerified",
+    "grantAdmitted",
+    "grantBound",
+    "grantAuthorized",
+    "probeAuthorized",
+    "authorizationConsumed",
+    "terminal",
+    "closed",
+  ];
+  for (const name of receiptNames) {
+    requireDigest(`receipts.${name}`, input.receipts?.[name]);
+  }
 
   for (const label of Object.keys(VIVISECTION_JUDGMENT)) {
     requireVivisectionJudgment(label, input.judgment?.[label]);
@@ -348,17 +378,6 @@ export function buildVivisectionAssuranceRecord(input) {
     throw new TypeError("generatedAt must be an ISO-8601 date-time string or Date");
   }
 
-  const experiment = {
-    probeName: input.experiment.probeName,
-    probeDescriptorSha256: input.experiment.probeDescriptorSha256,
-    inputSha256: input.experiment.inputSha256,
-    ...(input.experiment.outputSha256 !== undefined
-      ? { outputSha256: input.experiment.outputSha256 }
-      : {}),
-    requestedEffects,
-    exercisedEffects,
-  };
-
   const unsigned = {
     schemaVersion: 1,
     kind: "windanvil.vivisection-assurance-record",
@@ -375,14 +394,38 @@ export function buildVivisectionAssuranceRecord(input) {
       bundleSha256: input.subject.bundleSha256,
     },
     authority: {
-      capabilityGrantId: input.authority.capabilityGrantId,
-      vivisectionGrantId: input.authority.vivisectionGrantId,
-      allowedEffects,
+      capabilityManifest: {
+        id: input.authority.capabilityManifest.id,
+        digest: input.authority.capabilityManifest.digest,
+      },
+      vivisectionGrant: {
+        id: grant.id,
+        digest: grant.digest,
+        bladeId: grant.bladeId,
+        keyId: grant.keyId,
+        authorizationEpoch: grant.authorizationEpoch,
+        notAfterUnix: grant.notAfterUnix,
+        allowedEffects,
+      },
     },
-    experiment,
+    experiment: {
+      probeName: input.experiment.probeName,
+      probeDescriptorSha256: input.experiment.probeDescriptorSha256,
+      inputSha256: input.experiment.inputSha256,
+      ...(input.experiment.outputSha256 !== undefined
+        ? { outputSha256: input.experiment.outputSha256 }
+        : {}),
+      requestedEffects,
+      exercisedEffects,
+    },
     receipts: {
       opened: input.receipts.opened,
-      authorized: input.receipts.authorized,
+      grantVerified: input.receipts.grantVerified,
+      grantAdmitted: input.receipts.grantAdmitted,
+      grantBound: input.receipts.grantBound,
+      grantAuthorized: input.receipts.grantAuthorized,
+      probeAuthorized: input.receipts.probeAuthorized,
+      authorizationConsumed: input.receipts.authorizationConsumed,
       terminal: input.receipts.terminal,
       closed: input.receipts.closed,
     },

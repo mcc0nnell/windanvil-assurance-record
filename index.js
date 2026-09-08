@@ -319,11 +319,24 @@ export function buildVivisectionAssuranceRecord(input) {
   );
 
   requireNonEmptyString("experiment.probeName", input.experiment?.probeName);
+  requireNonEmptyString("experiment.probeVersion", input.experiment?.probeVersion);
   requireSha256Hex("experiment.probeDescriptorSha256", input.experiment?.probeDescriptorSha256);
   requireSha256Hex("experiment.inputSha256", input.experiment?.inputSha256);
+  requireSha256Hex("experiment.requestSha256", input.experiment?.requestSha256);
+  requireSha256Hex("experiment.authorizationIdSha256", input.experiment?.authorizationIdSha256);
   if (input.experiment?.outputSha256 !== undefined) {
     requireSha256Hex("experiment.outputSha256", input.experiment.outputSha256);
   }
+  if (input.experiment?.terminal !== "COMPLETED" && input.experiment?.terminal !== "FAILED") {
+    throw new TypeError("experiment.terminal must be COMPLETED or FAILED");
+  }
+  if (input.experiment.terminal === "COMPLETED" && input.experiment.outputSha256 === undefined) {
+    throw new TypeError("completed experiment must bind outputSha256");
+  }
+  if (input.experiment.terminal === "FAILED" && input.experiment.outputSha256 !== undefined) {
+    throw new TypeError("failed experiment must not claim outputSha256");
+  }
+
   const requestedEffects = normalizeStrings(
     "experiment.requestedEffects",
     input.experiment?.requestedEffects ?? [],
@@ -410,11 +423,15 @@ export function buildVivisectionAssuranceRecord(input) {
     },
     experiment: {
       probeName: input.experiment.probeName,
+      probeVersion: input.experiment.probeVersion,
       probeDescriptorSha256: input.experiment.probeDescriptorSha256,
       inputSha256: input.experiment.inputSha256,
+      requestSha256: input.experiment.requestSha256,
+      authorizationIdSha256: input.experiment.authorizationIdSha256,
       ...(input.experiment.outputSha256 !== undefined
         ? { outputSha256: input.experiment.outputSha256 }
         : {}),
+      terminal: input.experiment.terminal,
       requestedEffects,
       exercisedEffects,
     },

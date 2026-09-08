@@ -46,14 +46,42 @@
     "authority": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["capabilityGrantId", "vivisectionGrantId", "allowedEffects"],
+      "required": ["capabilityManifest", "vivisectionGrant"],
       "properties": {
-        "capabilityGrantId": { "type": "string", "minLength": 1 },
-        "vivisectionGrantId": { "type": "string", "minLength": 1 },
-        "allowedEffects": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 },
-          "uniqueItems": true
+        "capabilityManifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "digest"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/$defs/digest" }
+          }
+        },
+        "vivisectionGrant": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "digest",
+            "bladeId",
+            "keyId",
+            "authorizationEpoch",
+            "notAfterUnix",
+            "allowedEffects"
+          ],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/$defs/digest" },
+            "bladeId": { "type": "string", "minLength": 1 },
+            "keyId": { "type": "string", "minLength": 1 },
+            "authorizationEpoch": { "type": "integer", "minimum": 1 },
+            "notAfterUnix": { "type": "integer", "minimum": 1 },
+            "allowedEffects": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            }
+          }
         }
       }
     },
@@ -81,10 +109,25 @@
     "receipts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["opened", "authorized", "terminal", "closed"],
+      "required": [
+        "opened",
+        "grantVerified",
+        "grantAdmitted",
+        "grantBound",
+        "grantAuthorized",
+        "probeAuthorized",
+        "authorizationConsumed",
+        "terminal",
+        "closed"
+      ],
       "properties": {
         "opened": { "$ref": "#/$defs/digest" },
-        "authorized": { "$ref": "#/$defs/digest" },
+        "grantVerified": { "$ref": "#/$defs/digest" },
+        "grantAdmitted": { "$ref": "#/$defs/digest" },
+        "grantBound": { "$ref": "#/$defs/digest" },
+        "grantAuthorized": { "$ref": "#/$defs/digest" },
+        "probeAuthorized": { "$ref": "#/$defs/digest" },
+        "authorizationConsumed": { "$ref": "#/$defs/digest" },
         "terminal": { "$ref": "#/$defs/digest" },
         "closed": { "$ref": "#/$defs/digest" }
       }

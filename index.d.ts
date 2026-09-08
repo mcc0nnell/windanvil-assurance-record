@@ -61,6 +61,100 @@ export interface AssuranceRecordInput {
   };
 }
 
+export type VivisectionAuthorityJudgment = "VALID" | "INVALID" | "NOT_EVALUATED";
+export type VivisectionBindingJudgment = "VALID" | "INVALID";
+export type VivisectionEvidenceJudgment = "COMPLETE" | "INCOMPLETE";
+export type VivisectionEffectsJudgment = "CONFORMANT" | "VIOLATION" | "NOT_APPLICABLE";
+export type VivisectionCausalityJudgment = "COMPLETE" | "PARTIAL" | "BROKEN" | "NOT_EVALUATED";
+export type VivisectionReconstructabilityJudgment = "YES" | "NO" | "BLOCKED";
+export type VivisectionReplayJudgment = "MATCH" | "DIVERGED" | "NOT_RUN" | "BLOCKED";
+export type VivisectionTerminalState = "COMPLETED" | "FAILED";
+
+export interface VivisectionAssuranceRecord {
+  schemaVersion: 1;
+  kind: "windanvil.vivisection-assurance-record";
+  generatedAt: string;
+  identity: {
+    experimentId: string;
+    sessionId: string;
+    causalId: string;
+  };
+  subject: {
+    manifestId: string;
+    capability: string;
+    bundleId: number;
+    bundleSha256: string;
+  };
+  authority: {
+    capabilityManifest: {
+      id: string;
+      digest: string;
+    };
+    vivisectionGrant: {
+      id: string;
+      digest: string;
+      bladeId: string;
+      keyId: string;
+      authorizationEpoch: number;
+      notAfterUnix: number;
+      allowedEffects: string[];
+    };
+  };
+  experiment: {
+    probeName: string;
+    probeVersion: string;
+    probeDescriptorSha256: string;
+    inputSha256: string;
+    requestSha256: string;
+    authorizationIdSha256: string;
+    outputSha256?: string;
+    terminal: VivisectionTerminalState;
+    requestedEffects: string[];
+    exercisedEffects: string[];
+  };
+  receipts: {
+    opened: string;
+    grantVerified: string;
+    grantAdmitted: string;
+    grantBound: string;
+    grantAuthorized: string;
+    probeAuthorized: string;
+    authorizationConsumed: string;
+    terminal: string;
+    closed: string;
+  };
+  judgment: {
+    authority: VivisectionAuthorityJudgment;
+    binding: VivisectionBindingJudgment;
+    evidence: VivisectionEvidenceJudgment;
+    effects: VivisectionEffectsJudgment;
+    causality: VivisectionCausalityJudgment;
+    reconstructability: VivisectionReconstructabilityJudgment;
+    replay: VivisectionReplayJudgment;
+  };
+  verdict: { value: Verdict; reason: string };
+  evidence: {
+    observationDigests: string[];
+    artifactDigests: string[];
+  };
+  digest: string;
+}
+
+export interface VivisectionAssuranceRecordInput {
+  generatedAt?: string | Date;
+  identity: VivisectionAssuranceRecord["identity"];
+  subject: VivisectionAssuranceRecord["subject"];
+  authority: VivisectionAssuranceRecord["authority"];
+  experiment: VivisectionAssuranceRecord["experiment"];
+  receipts: VivisectionAssuranceRecord["receipts"];
+  judgment: VivisectionAssuranceRecord["judgment"];
+  verdict: VivisectionAssuranceRecord["verdict"];
+  evidence?: {
+    observationDigests?: string[];
+    artifactDigests?: string[];
+  };
+}
+
 export function canonicalJson(value: unknown): string;
 export function digestOf(value: unknown): string;
 export function isDigest(value: unknown): value is string;
@@ -69,4 +163,9 @@ export function evaluateRequiredAssertions(
   assertions: Assertion[],
 ): AssertionEvaluation;
 export function buildAssuranceRecord(input: AssuranceRecordInput): AssuranceRecord;
-export function verifyAssuranceRecordDigest(record: AssuranceRecord | unknown): boolean;
+export function buildVivisectionAssuranceRecord(
+  input: VivisectionAssuranceRecordInput,
+): VivisectionAssuranceRecord;
+export function verifyAssuranceRecordDigest(
+  record: AssuranceRecord | VivisectionAssuranceRecord | unknown,
+): boolean;

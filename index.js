@@ -240,3 +240,236 @@ export function verifyAssuranceRecordDigest(record) {
   const { digest, ...unsigned } = record;
   return digestOf(unsigned) === digest;
 }
+
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+const VIVISECTION_JUDGMENT = {
+  authority: new Set(["VALID", "INVALID", "NOT_EVALUATED"]),
+  binding: new Set(["VALID", "INVALID"]),
+  evidence: new Set(["COMPLETE", "INCOMPLETE"]),
+  effects: new Set(["CONFORMANT", "VIOLATION", "NOT_APPLICABLE"]),
+  causality: new Set(["COMPLETE", "PARTIAL", "BROKEN", "NOT_EVALUATED"]),
+  reconstructability: new Set(["YES", "NO", "BLOCKED"]),
+  replay: new Set(["MATCH", "DIVERGED", "NOT_RUN", "BLOCKED"]),
+};
+
+function requireSha256Hex(label, value) {
+  if (typeof value !== "string" || !SHA256_HEX.test(value)) {
+    throw new TypeError(`${label} must be a lowercase 64-character SHA-256 hex string`);
+  }
+}
+
+function requirePositiveSafeInteger(label, value) {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError(`${label} must be a positive safe integer`);
+  }
+}
+
+function normalizeStrings(label, values) {
+  if (!Array.isArray(values)) throw new TypeError(`${label} must be an array`);
+  const normalized = [...new Set(values)];
+  for (const value of normalized) requireNonEmptyString(label, value);
+  return normalized.sort();
+}
+
+function requireVivisectionJudgment(label, value) {
+  if (!VIVISECTION_JUDGMENT[label]?.has(value)) {
+    throw new TypeError(`judgment.${label} has invalid value: ${value}`);
+  }
+}
+
+/**
+ * Build a first-class Vivisection Assurance Record.
+ *
+ * This is intentionally a sibling of the production execution record rather
+ * than debug metadata. It binds an experiment to exact Blade authority,
+ * artifact identity, probe/effect scope, the one-shot receipt chain, and an
+ * independent WindAnvil judgment. The caller supplies the terminal verdict;
+ * this package never upgrades experimental success into production correctness.
+ */
+export function buildVivisectionAssuranceRecord(input) {
+  if (!input || typeof input !== "object") throw new TypeError("input must be an object");
+
+  requireNonEmptyString("identity.experimentId", input.identity?.experimentId);
+  requireNonEmptyString("identity.sessionId", input.identity?.sessionId);
+  requireNonEmptyString("identity.causalId", input.identity?.causalId);
+
+  requireNonEmptyString("subject.manifestId", input.subject?.manifestId);
+  requireNonEmptyString("subject.capability", input.subject?.capability);
+  if (!Number.isInteger(input.subject?.bundleId) || input.subject.bundleId < 0) {
+    throw new TypeError("subject.bundleId must be a non-negative integer");
+  }
+  requireSha256Hex("subject.bundleSha256", input.subject.bundleSha256);
+
+  requireNonEmptyString("authority.capabilityManifest.id", input.authority?.capabilityManifest?.id);
+  requireDigest("authority.capabilityManifest.digest", input.authority?.capabilityManifest?.digest);
+  if (input.authority.capabilityManifest.id !== input.subject.manifestId) {
+    throw new TypeError("capability manifest authority does not match the subject manifest");
+  }
+
+  const grant = input.authority?.vivisectionGrant;
+  requireNonEmptyString("authority.vivisectionGrant.id", grant?.id);
+  requireDigest("authority.vivisectionGrant.digest", grant?.digest);
+  requireNonEmptyString("authority.vivisectionGrant.bladeId", grant?.bladeId);
+  requireNonEmptyString("authority.vivisectionGrant.keyId", grant?.keyId);
+  requirePositiveSafeInteger("authority.vivisectionGrant.authorizationEpoch", grant?.authorizationEpoch);
+  requirePositiveSafeInteger("authority.vivisectionGrant.notAfterUnix", grant?.notAfterUnix);
+  const allowedEffects = normalizeStrings(
+    "authority.vivisectionGrant.allowedEffects",
+    grant?.allowedEffects ?? [],
+  );
+
+  requireNonEmptyString("experiment.probeName", input.experiment?.probeName);
+  requireNonEmptyString("experiment.probeVersion", input.experiment?.probeVersion);
+  requireSha256Hex("experiment.probeDescriptorSha256", input.experiment?.probeDescriptorSha256);
+  requireSha256Hex("experiment.inputSha256", input.experiment?.inputSha256);
+  requireSha256Hex("experiment.requestSha256", input.experiment?.requestSha256);
+  requireSha256Hex("experiment.authorizationIdSha256", input.experiment?.authorizationIdSha256);
+  if (input.experiment?.outputSha256 !== undefined) {
+    requireSha256Hex("experiment.outputSha256", input.experiment.outputSha256);
+  }
+  if (input.experiment?.terminal !== "COMPLETED" && input.experiment?.terminal !== "FAILED") {
+    throw new TypeError("experiment.terminal must be COMPLETED or FAILED");
+  }
+  if (input.experiment.terminal === "COMPLETED" && input.experiment.outputSha256 === undefined) {
+    throw new TypeError("completed experiment must bind outputSha256");
+  }
+  if (input.experiment.terminal === "FAILED" && input.experiment.outputSha256 !== undefined) {
+    throw new TypeError("failed experiment must not claim outputSha256");
+  }
+
+  const requestedEffects = normalizeStrings(
+    "experiment.requestedEffects",
+    input.experiment?.requestedEffects ?? [],
+  );
+  const exercisedEffects = normalizeStrings(
+    "experiment.exercisedEffects",
+    input.experiment?.exercisedEffects ?? [],
+  );
+
+  for (const effect of requestedEffects) {
+    if (!allowedEffects.includes(effect)) {
+      throw new TypeError(`requested effect is outside signed authority: ${effect}`);
+    }
+  }
+  for (const effect of exercisedEffects) {
+    if (!requestedEffects.includes(effect)) {
+      throw new TypeError(`exercised effect was not requested: ${effect}`);
+    }
+  }
+
+  const receiptNames = [
+    "opened",
+    "grantVerified",
+    "grantAdmitted",
+    "grantBound",
+    "grantAuthorized",
+    "probeAuthorized",
+    "authorizationConsumed",
+    "terminal",
+    "closed",
+  ];
+  for (const name of receiptNames) {
+    requireDigest(`receipts.${name}`, input.receipts?.[name]);
+  }
+
+  for (const label of Object.keys(VIVISECTION_JUDGMENT)) {
+    requireVivisectionJudgment(label, input.judgment?.[label]);
+  }
+
+  requireVerdict(input.verdict?.value);
+  requireNonEmptyString("verdict.reason", input.verdict?.reason);
+
+  const generatedAt =
+    input.generatedAt instanceof Date
+      ? input.generatedAt.toISOString()
+      : input.generatedAt ?? new Date().toISOString();
+  if (
+    typeof generatedAt !== "string" ||
+    !RFC3339_DATE_TIME.test(generatedAt) ||
+    Number.isNaN(Date.parse(generatedAt))
+  ) {
+    throw new TypeError("generatedAt must be an ISO-8601 date-time string or Date");
+  }
+
+  const unsigned = {
+    schemaVersion: 1,
+    kind: "windanvil.vivisection-assurance-record",
+    generatedAt,
+    identity: {
+      experimentId: input.identity.experimentId,
+      sessionId: input.identity.sessionId,
+      causalId: input.identity.causalId,
+    },
+    subject: {
+      manifestId: input.subject.manifestId,
+      capability: input.subject.capability,
+      bundleId: input.subject.bundleId,
+      bundleSha256: input.subject.bundleSha256,
+    },
+    authority: {
+      capabilityManifest: {
+        id: input.authority.capabilityManifest.id,
+        digest: input.authority.capabilityManifest.digest,
+      },
+      vivisectionGrant: {
+        id: grant.id,
+        digest: grant.digest,
+        bladeId: grant.bladeId,
+        keyId: grant.keyId,
+        authorizationEpoch: grant.authorizationEpoch,
+        notAfterUnix: grant.notAfterUnix,
+        allowedEffects,
+      },
+    },
+    experiment: {
+      probeName: input.experiment.probeName,
+      probeVersion: input.experiment.probeVersion,
+      probeDescriptorSha256: input.experiment.probeDescriptorSha256,
+      inputSha256: input.experiment.inputSha256,
+      requestSha256: input.experiment.requestSha256,
+      authorizationIdSha256: input.experiment.authorizationIdSha256,
+      ...(input.experiment.outputSha256 !== undefined
+        ? { outputSha256: input.experiment.outputSha256 }
+        : {}),
+      terminal: input.experiment.terminal,
+      requestedEffects,
+      exercisedEffects,
+    },
+    receipts: {
+      opened: input.receipts.opened,
+      grantVerified: input.receipts.grantVerified,
+      grantAdmitted: input.receipts.grantAdmitted,
+      grantBound: input.receipts.grantBound,
+      grantAuthorized: input.receipts.grantAuthorized,
+      probeAuthorized: input.receipts.probeAuthorized,
+      authorizationConsumed: input.receipts.authorizationConsumed,
+      terminal: input.receipts.terminal,
+      closed: input.receipts.closed,
+    },
+    judgment: {
+      authority: input.judgment.authority,
+      binding: input.judgment.binding,
+      evidence: input.judgment.evidence,
+      effects: input.judgment.effects,
+      causality: input.judgment.causality,
+      reconstructability: input.judgment.reconstructability,
+      replay: input.judgment.replay,
+    },
+    verdict: {
+      value: input.verdict.value,
+      reason: input.verdict.reason,
+    },
+    evidence: {
+      observationDigests: normalizeDigests(
+        "evidence.observationDigests",
+        input.evidence?.observationDigests ?? [],
+      ),
+      artifactDigests: normalizeDigests(
+        "evidence.artifactDigests",
+        input.evidence?.artifactDigests ?? [],
+      ),
+    },
+  };
+
+  return { ...unsigned, digest: digestOf(unsigned) };
+}

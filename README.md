@@ -2,11 +2,12 @@
 
 A small, dependency-free open-source package for portable software-assurance records.
 
-It provides three things:
+It provides four things:
 
 1. deterministic SHA-256 digests over WindAnvil canonical JSON,
-2. a fail-closed evaluator for explicitly required assertions, and
-3. WindAnvil Assurance Record v1 construction and self-digest verification.
+2. a fail-closed evaluator for explicitly required assertions,
+3. WindAnvil Assurance Record v1 construction and self-digest verification, and
+4. a first-class Vivisection Assurance Record for evidence-bound experiments.
 
 The package is intentionally narrower than the WindAnvil service. It does **not**
 run builds, choose policy, scan source code, store private evidence, or turn a
@@ -56,7 +57,40 @@ const record = buildAssuranceRecord({
 console.log(verifyAssuranceRecordDigest(record)); // true
 ```
 
-The JSON Schema is exported at `windanvil-assurance-record/schema`.
+The production JSON Schema is exported at `windanvil-assurance-record/schema`.
+
+## Vivisection Assurance Record
+
+Vivisection is represented as a sibling record kind rather than debug metadata:
+
+```text
+windanvil.vivisection-assurance-record
+```
+
+A record binds the exact experiment/session identity to:
+
+- the admitted capability manifest and Celix bundle SHA-256,
+- the signed capability-manifest envelope digest,
+- the signed Vivisection-grant envelope digest and its Blade/key/epoch/expiry,
+- the named probe version and descriptor SHA-256,
+- the raw probe-input SHA-256,
+- the provider-neutral request-envelope SHA-256,
+- the one-shot authorization-id SHA-256,
+- requested and exercised experimental effects,
+- the opened / grant-verified / grant-admitted / grant-bound / grant-authorized /
+  probe-authorized / authorization-consumed / terminal / closed receipt chain,
+- independent authority, binding, evidence, effects, causality,
+  reconstructability, and replay judgments.
+
+The terminal state is `COMPLETED` or `FAILED`. A completed experiment must bind
+an output SHA-256; a failed experiment must not invent one.
+
+Most importantly, a Vivisection `PASS` is a statement about the experiment's
+authority and evidence. It is **not** a claim that the production behavior
+exercised by that experiment was correct.
+
+The Vivisection JSON Schema is exported at
+`windanvil-assurance-record/schema/vivisection`.
 
 ## Canonical digest input
 
@@ -77,6 +111,11 @@ JavaScript serialization behavior.
 - no required assertions means `BLOCKED`, never vacuous `PASS`;
 - a missing required assertion means `BLOCKED`;
 - a proven required failure means `FAIL`;
+- Vivisection effects cannot exceed the signed grant;
+- an exercised Vivisection effect must have been explicitly requested;
+- the Vivisection authority manifest must match the exact experiment subject;
+- raw probe input, request-envelope input, and one-shot authorization identity
+  remain distinct evidence identities;
 - the record self-digest detects later mutation;
 - the OSCAL bridge remains explicitly non-authoritative.
 

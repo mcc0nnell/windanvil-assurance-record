@@ -11,7 +11,8 @@
       "types": "./index.d.ts",
       "import": "./index.js"
     },
-    "./schema": "./schema/assurance-record.schema.json"
+    "./schema": "./schema/assurance-record.schema.json",
+    "./schema/vivisection": "./schema/vivisection-assurance-record.schema.json"
   },
   "files": [
     "index.js",

@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windanvil.com/schemas/vivisection-assurance-record-v1.schema.json",
+  "title": "WindAnvil Vivisection Assurance Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "generatedAt",
+    "identity",
+    "subject",
+    "authority",
+    "experiment",
+    "receipts",
+    "judgment",
+    "verdict",
+    "evidence",
+    "digest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "windanvil.vivisection-assurance-record" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["experimentId", "sessionId", "causalId"],
+      "properties": {
+        "experimentId": { "type": "string", "minLength": 1 },
+        "sessionId": { "type": "string", "minLength": 1 },
+        "causalId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestId", "capability", "bundleId", "bundleSha256"],
+      "properties": {
+        "manifestId": { "type": "string", "minLength": 1 },
+        "capability": { "type": "string", "minLength": 1 },
+        "bundleId": { "type": "integer", "minimum": 0 },
+        "bundleSha256": { "$ref": "#/$defs/sha256hex" }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityGrantId", "vivisectionGrantId", "allowedEffects"],
+      "properties": {
+        "capabilityGrantId": { "type": "string", "minLength": 1 },
+        "vivisectionGrantId": { "type": "string", "minLength": 1 },
+        "allowedEffects": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probeName", "probeDescriptorSha256", "inputSha256", "requestedEffects", "exercisedEffects"],
+      "properties": {
+        "probeName": { "type": "string", "minLength": 1 },
+        "probeDescriptorSha256": { "$ref": "#/$defs/sha256hex" },
+        "inputSha256": { "$ref": "#/$defs/sha256hex" },
+        "outputSha256": { "$ref": "#/$defs/sha256hex" },
+        "requestedEffects": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "exercisedEffects": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "receipts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opened", "authorized", "terminal", "closed"],
+      "properties": {
+        "opened": { "$ref": "#/$defs/digest" },
+        "authorized": { "$ref": "#/$defs/digest" },
+        "terminal": { "$ref": "#/$defs/digest" },
+        "closed": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "binding", "evidence", "effects", "causality", "reconstructability", "replay"],
+      "properties": {
+        "authority": { "enum": ["VALID", "INVALID", "NOT_EVALUATED"] },
+        "binding": { "enum": ["VALID", "INVALID"] },
+        "evidence": { "enum": ["COMPLETE", "INCOMPLETE"] },
+        "effects": { "enum": ["CONFORMANT", "VIOLATION", "NOT_APPLICABLE"] },
+        "causality": { "enum": ["COMPLETE", "PARTIAL", "BROKEN", "NOT_EVALUATED"] },
+        "reconstructability": { "enum": ["YES", "NO", "BLOCKED"] },
+        "replay": { "enum": ["MATCH", "DIVERGED", "NOT_RUN", "BLOCKED"] }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "reason"],
+      "properties": {
+        "value": { "enum": ["PASS", "FAIL", "BLOCKED"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observationDigests", "artifactDigests"],
+      "properties": {
+        "observationDigests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/digest" },
+          "uniqueItems": true
+        },
+        "artifactDigests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/digest" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "digest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "sha256hex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

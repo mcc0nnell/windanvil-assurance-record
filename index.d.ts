@@ -85,9 +85,19 @@ export interface VivisectionAssuranceRecord {
     bundleSha256: string;
   };
   authority: {
-    capabilityGrantId: string;
-    vivisectionGrantId: string;
-    allowedEffects: string[];
+    capabilityManifest: {
+      id: string;
+      digest: string;
+    };
+    vivisectionGrant: {
+      id: string;
+      digest: string;
+      bladeId: string;
+      keyId: string;
+      authorizationEpoch: number;
+      notAfterUnix: number;
+      allowedEffects: string[];
+    };
   };
   experiment: {
     probeName: string;
@@ -99,7 +109,12 @@ export interface VivisectionAssuranceRecord {
   };
   receipts: {
     opened: string;
-    authorized: string;
+    grantVerified: string;
+    grantAdmitted: string;
+    grantBound: string;
+    grantAuthorized: string;
+    probeAuthorized: string;
+    authorizationConsumed: string;
     terminal: string;
     closed: string;
   };

@@ -88,12 +88,26 @@
     "experiment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["probeName", "probeDescriptorSha256", "inputSha256", "requestedEffects", "exercisedEffects"],
+      "required": [
+        "probeName",
+        "probeVersion",
+        "probeDescriptorSha256",
+        "inputSha256",
+        "requestSha256",
+        "authorizationIdSha256",
+        "terminal",
+        "requestedEffects",
+        "exercisedEffects"
+      ],
       "properties": {
         "probeName": { "type": "string", "minLength": 1 },
+        "probeVersion": { "type": "string", "minLength": 1 },
         "probeDescriptorSha256": { "$ref": "#/$defs/sha256hex" },
         "inputSha256": { "$ref": "#/$defs/sha256hex" },
+        "requestSha256": { "$ref": "#/$defs/sha256hex" },
+        "authorizationIdSha256": { "$ref": "#/$defs/sha256hex" },
         "outputSha256": { "$ref": "#/$defs/sha256hex" },
+        "terminal": { "enum": ["COMPLETED", "FAILED"] },
         "requestedEffects": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
@@ -104,7 +118,17 @@
           "items": { "type": "string", "minLength": 1 },
           "uniqueItems": true
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "terminal": { "const": "COMPLETED" } }, "required": ["terminal"] },
+          "then": { "required": ["outputSha256"] }
+        },
+        {
+          "if": { "properties": { "terminal": { "const": "FAILED" } }, "required": ["terminal"] },
+          "then": { "not": { "required": ["outputSha256"] } }
+        }
+      ]
     },
     "receipts": {
       "type": "object",

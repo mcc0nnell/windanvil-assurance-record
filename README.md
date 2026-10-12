@@ -67,7 +67,10 @@ functions, symbols, bigints, non-finite numbers, sparse arrays, circular
 structures, and non-plain objects such as `Date` instances.
 
 That restriction is deliberate. Evidence digests should not depend on lossy
-JavaScript serialization behavior.
+JavaScript serialization behavior. Canonicalization preserves **every own JSON
+property name**, including `__proto__` and nested keys; changes to those
+fields must change the digest. Existing digests over JSON without such keys
+are unchanged.
 
 ## Security invariants
 

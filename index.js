@@ -46,7 +46,10 @@ function normalizedJson(value, stack = new Set()) {
       throw new TypeError("canonical JSON rejects symbol keys");
     }
 
-    const out = {};
+    // A null-prototype accumulator preserves own JSON keys such as
+    // "__proto__" as data. An ordinary object would invoke its inherited
+    // setter and silently omit that key from the hashed serialization.
+    const out = Object.create(null);
     for (const key of Object.keys(value).sort()) {
       out[key] = normalizedJson(value[key], stack);
     }

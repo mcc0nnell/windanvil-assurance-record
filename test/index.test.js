@@ -102,3 +102,21 @@ test("malformed digests are rejected", () => {
     /policy\.digest/,
   );
 });
+
+test("canonical JSON preserves own __proto__ keys as signed data", () => {
+  const first = JSON.parse('{"x":1,"__proto__":{"marker":"A"}}');
+  const second = JSON.parse('{"x":1,"__proto__":{"marker":"B"}}');
+  assert.match(canonicalJson(first), /"__proto__":\{"marker":"A"\}/);
+  assert.notEqual(canonicalJson(first), canonicalJson(second));
+  assert.notEqual(digestOf(first), digestOf(second));
+  assert.deepEqual(Object.getPrototypeOf(first), Object.prototype);
+});
+
+test("nested prototype-named properties remain evidence-bound without prototype pollution", () => {
+  const a = JSON.parse('{"outer":{"__proto__":{"tag":"one"},"constructor":"data"}}');
+  const b = JSON.parse('{"outer":{"__proto__":{"tag":"two"},"constructor":"data"}}');
+  assert.notEqual(digestOf(a), digestOf(b));
+  assert.equal(JSON.parse(canonicalJson(a)).outer.__proto__.tag, "one");
+  assert.equal(({}).tag, undefined);
+  assert.equal(digestOf({ a: 1, b: 2 }), digestOf({ b: 2, a: 1 }));
+});
